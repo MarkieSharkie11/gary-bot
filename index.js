@@ -1,6 +1,8 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+const { execFile } = require('child_process');
+const cron = require('node-cron');
 const { Client, GatewayIntentBits } = require('discord.js');
 const Anthropic = require('@anthropic-ai/sdk');
 
@@ -39,12 +41,33 @@ function checkUserRate(userId) {
 
 // Load crawled data from ./data/ as RAG knowledge base
 const dataDir = path.join(__dirname, 'data');
-const dataFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
-const pages = dataFiles.map(f => {
-  const page = JSON.parse(fs.readFileSync(path.join(dataDir, f), 'utf-8'));
-  return { title: page.title, text: page.text };
+let pages = [];
+
+function loadPages() {
+  const dataFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
+  pages = dataFiles.map(f => {
+    const page = JSON.parse(fs.readFileSync(path.join(dataDir, f), 'utf-8'));
+    return { title: page.title, text: page.text };
+  });
+  console.log(`Loaded ${pages.length} pages into knowledge base.`);
+}
+
+loadPages();
+
+// Re-crawl on the 1st of every month at midnight and reload pages
+cron.schedule('0 0 1 * *', () => {
+  console.log('Scheduled monthly crawl starting...');
+  execFile('node', [path.join(__dirname, 'crawl.js')], (err, stdout, stderr) => {
+    if (err) {
+      console.error('Scheduled crawl failed:', err.message);
+      return;
+    }
+    console.log(stdout);
+    if (stderr) console.error(stderr);
+    loadPages();
+    console.log('Scheduled crawl complete — knowledge base refreshed.');
+  });
 });
-console.log(`Loaded ${pages.length} pages into knowledge base.`);
 
 const STOP_WORDS = new Set([
   'a','an','the','is','are','was','were','be','been','being','have','has','had',
