@@ -1,6 +1,6 @@
 # RivianTrackr Bot
 
-A Discord bot that answers questions about Rivian. It crawls content from [RivianTrackr.com](https://www.riviantrackr.com) and other sources, then uses that knowledge base to give friendly, informed answers powered by Claude.
+A Discord bot that answers questions about Rivian. It crawls content from several trusted sources of Rivian information, then uses that knowledge base to give friendly, informed answers powered by Claude.
 
 ## Setup
 
