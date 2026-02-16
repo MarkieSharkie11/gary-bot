@@ -11,6 +11,24 @@ const visited = new Set();
 // Sites to spider (follows internal links)
 const SPIDER_SITES = [
   'https://www.riviantrackr.com',
+  'https://www.rivianroamer.com',
+];
+
+// URL path patterns to skip when spidering (matched against pathname)
+const SKIP_PATTERNS = [
+  /^\/charging\/sites\//,    // individual charging station pages
+  /^\/charging\/networks\//,  // individual charging network pages
+  /^\/leaderboards\//,        // leaderboard sub-pages
+  /^\/forum\/members\//,      // forum member profiles
+  /^\/forum\/posts\//,        // individual forum post redirects
+  /^\/forum\/threads\/.*\/post-/, // specific post anchors within threads
+  /^\/forum\/threads\/.*\/page-/, // paginated thread pages
+  /^\/forum\/threads\/.*\/latest/, // "latest" post redirects
+  /^\/forum\/threads\/\d+$/,  // numeric thread shortcuts
+  /\/login/,                  // login pages
+  /\/register/,               // registration pages
+  /\/account\//,              // account pages
+  /\/sign-in/,                // sign-in pages
 ];
 
 // Specific pages to fetch (no link following)
@@ -87,6 +105,7 @@ async function crawlPage(urlPath, baseUrl, follow) {
   if (follow) {
     const links = extractLinks($, fullUrl, baseUrl);
     for (const link of links) {
+      if (SKIP_PATTERNS.some(pattern => pattern.test(link))) continue;
       const key = baseUrl + link;
       if (!visited.has(key) && !queue.some(q => q.base + q.url === key)) {
         queue.push({ url: link, base: baseUrl, follow: true });
