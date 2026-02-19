@@ -31,6 +31,11 @@ const SKIP_PATTERNS = [
   /\/sign-in/,                // sign-in pages
 ];
 
+// RSS feeds to discover pages (no link following)
+const RSS_FEEDS = [
+  'https://riviantrackr.com/sitemap.rss',
+];
+
 // Specific pages to fetch (no link following)
 const EXTRA_PAGES = [
   'https://www.rivian.com',
@@ -128,9 +133,45 @@ async function crawlPage(urlPath, baseUrl, follow) {
   console.log(`  Saved: ${filename} (${text.length} chars)`);
 }
 
+async function fetchRssUrls(feedUrl) {
+  const urls = [];
+  try {
+    const res = await fetch(feedUrl, {
+      headers: { 'User-Agent': 'GaryBot-Crawler/1.0' },
+    });
+    if (!res.ok) {
+      console.log(`  RSS fetch failed (HTTP ${res.status}): ${feedUrl}`);
+      return urls;
+    }
+    const xml = await res.text();
+    const $ = cheerio.load(xml, { xmlMode: true });
+    $('item > link').each((_, el) => {
+      const link = $(el).text().trim();
+      if (link) urls.push(link);
+    });
+    console.log(`  RSS feed ${feedUrl} — found ${urls.length} URLs`);
+  } catch (err) {
+    console.log(`  Error fetching RSS ${feedUrl}: ${err.message}`);
+  }
+  return urls;
+}
+
 async function crawl() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+
+  // Discover pages from RSS feeds
+  for (const feedUrl of RSS_FEEDS) {
+    const rssUrls = await fetchRssUrls(feedUrl);
+    for (const pageUrl of rssUrls) {
+      const parsed = new URL(pageUrl);
+      const base = parsed.origin;
+      const urlPath = parsed.pathname.replace(/\/$/, '') || '/';
+      if (!SKIP_PATTERNS.some(pattern => pattern.test(urlPath))) {
+        queue.push({ url: urlPath, base, follow: false });
+      }
+    }
   }
 
   // Add extra pages to the queue (no link following)
@@ -141,7 +182,7 @@ async function crawl() {
     queue.push({ url: urlPath, base, follow: false });
   }
 
-  console.log(`Starting crawl — ${SPIDER_SITES.length} site(s) to spider, ${EXTRA_PAGES.length} extra page(s)`);
+  console.log(`Starting crawl — ${SPIDER_SITES.length} site(s) to spider, ${RSS_FEEDS.length} RSS feed(s), ${EXTRA_PAGES.length} extra page(s)`);
   console.log(`Saving to ${DATA_DIR}\n`);
 
   while (queue.length > 0) {
