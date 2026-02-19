@@ -17,6 +17,34 @@ const userRequests = new Map();   // userId -> [timestamp, ...]
 let globalDailyCount = 0;
 let globalDayStart = Date.now();
 
+// Conversation memory — keyed by Discord user ID
+const HISTORY_LIMIT = 4;                    // max stored messages (2 exchanges)
+const IDLE_TIMEOUT_MS = 60 * 60 * 1000;    // clear after 60 minutes of inactivity
+const conversationHistory = new Map();       // userId -> { messages: [], lastActivity: number }
+
+function getConversation(userId) {
+  const entry = conversationHistory.get(userId);
+  if (!entry) return [];
+  if (Date.now() - entry.lastActivity >= IDLE_TIMEOUT_MS) {
+    conversationHistory.delete(userId);
+    return [];
+  }
+  return entry.messages;
+}
+
+function addToConversation(userId, userMsg, assistantMsg) {
+  const entry = conversationHistory.get(userId) || { messages: [], lastActivity: 0 };
+  entry.messages.push(
+    { role: 'user', content: userMsg },
+    { role: 'assistant', content: assistantMsg }
+  );
+  while (entry.messages.length > HISTORY_LIMIT) {
+    entry.messages.shift();
+  }
+  entry.lastActivity = Date.now();
+  conversationHistory.set(userId, entry);
+}
+
 function resetGlobalIfNewDay() {
   const now = Date.now();
   if (now - globalDayStart >= 24 * 60 * 60 * 1000) {
@@ -67,6 +95,12 @@ cron.schedule('0 0 1 * *', () => {
     loadPages();
     console.log('Scheduled crawl complete — knowledge base refreshed.');
   });
+});
+
+// Clear all conversation history at midnight every day
+cron.schedule('0 0 * * *', () => {
+  conversationHistory.clear();
+  console.log('Daily conversation history reset complete.');
 });
 
 const STOP_WORDS = new Set([
@@ -170,14 +204,18 @@ client.on('messageCreate', async (message) => {
     const relevantPages = searchPages(question);
     console.log(`Question: "${question}" — matched ${relevantPages.length}/${pages.length} pages`);
 
+    const history = getConversation(message.author.id);
+    const messages = [...history, { role: 'user', content: question }];
+
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 350,
       system: buildSystemPrompt(relevantPages),
-      messages: [{ role: 'user', content: question }],
+      messages,
     });
 
     const answer = response.content[0].text.slice(0, 2000);
+    addToConversation(message.author.id, question, answer);
     await message.reply(answer);
   } catch (err) {
     console.log('Anthropic API error:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
