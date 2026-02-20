@@ -127,7 +127,7 @@ function searchPages(question) {
   });
 
   scored.sort((a, b) => b.score - a.score);
-  return scored.filter(s => s.score > 0).map(s => s.page);
+  return scored.filter(s => s.score > 0).slice(0, 5).map(s => s.page);
 }
 
 function buildSystemPrompt(relevantPages) {
