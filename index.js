@@ -108,6 +108,19 @@ cron.schedule('0 0 * * *', () => {
   console.log('Daily conversation history reset complete.');
 });
 
+// Per-user behavior overrides.
+// Key: Discord user ID (right-click a user → Copy User ID with Developer Mode on).
+// extraPrompt: injected into Gary's system prompt only for that user.
+// bypassRateLimit: if true, the user is exempt from hourly rate limiting.
+const SPECIAL_USERS = {
+  // Example — replace the key with the real Discord user ID:
+  // '123456789012345678': {
+  //   label: 'PowerUser',
+  //   extraPrompt: 'This user is a Rivian engineer. Be extra technical and precise.',
+  //   bypassRateLimit: false,
+  // },
+};
+
 const STOP_WORDS = new Set([
   'a','an','the','is','are','was','were','be','been','being','have','has','had',
   'do','does','did','will','would','could','should','may','might','shall','can',
@@ -130,10 +143,14 @@ function searchPages(question) {
   return scored.filter(s => s.score > 0).slice(0, 5).map(s => s.page);
 }
 
-function buildSystemPrompt(relevantPages) {
+function buildSystemPrompt(relevantPages, extraInstructions = '') {
   const context = relevantPages.length > 0
     ? relevantPages.map(p => `## ${p.title}\n${p.text}`).join('\n\n')
     : '(No relevant content found in the knowledge base for this question.)';
+
+  const userSection = extraInstructions
+    ? `\nUser-specific instructions (override defaults where they conflict):\n${extraInstructions}\n`
+    : '';
 
   return `You are GaryBot, the community bot for RivianTrackr. Every question you receive is about Rivian — never ask which company or brand the user means.
 
@@ -152,7 +169,7 @@ Answering rules:
 - Sprinkle in emojis where they fit naturally — keep it fun but don't overdo it.
 - If you don't know something, be honest in a lighthearted way. Don't make stuff up. Suggest checking RivianTrackr.com for more.
 - Base your answers on the knowledge base below.
-
+${userSection}
 <knowledge_base>
 ${context}
 </knowledge_base>`;
@@ -195,9 +212,10 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // Per-user hourly limit
+  // Per-user hourly limit (bypassed for special users where configured)
+  const specialUser = SPECIAL_USERS[message.author.id];
   const rateCheck = checkUserRate(message.author.id);
-  if (!rateCheck.allowed) {
+  if (!rateCheck.allowed && !specialUser?.bypassRateLimit) {
     await message.reply(`Hey, slow down there trailblazer! 🛑 You've used all ${USER_RATE_LIMIT} of your questions this hour. Check back in about ${rateCheck.minutesLeft} minute${rateCheck.minutesLeft === 1 ? '' : 's'} and I'll be ready to chat again!`);
     return;
   }
@@ -206,7 +224,8 @@ client.on('messageCreate', async (message) => {
 
   try {
     const relevantPages = searchPages(question);
-    console.log(`Question: "${question}" — matched ${relevantPages.length}/${pages.length} pages`);
+    const userLabel = specialUser ? ` [special: ${specialUser.label}]` : '';
+    console.log(`Question: "${question}"${userLabel} — matched ${relevantPages.length}/${pages.length} pages`);
 
     const history = getConversation(message.author.id);
     const messages = [...history, { role: 'user', content: question }];
@@ -217,7 +236,7 @@ client.on('messageCreate', async (message) => {
         response = await anthropic.messages.create({
           model: 'claude-sonnet-4-5-20250929',
           max_tokens: 350,
-          system: buildSystemPrompt(relevantPages),
+          system: buildSystemPrompt(relevantPages, specialUser?.extraPrompt),
           messages,
         });
         break;
