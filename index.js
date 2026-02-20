@@ -219,7 +219,10 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
+  // Send typing indicator immediately and keep refreshing it every 9s while
+  // waiting for the API (Discord clears the indicator after ~10s of silence).
   await message.channel.sendTyping();
+  const typingInterval = setInterval(() => message.channel.sendTyping(), 9000);
 
   try {
     const relevantPages = searchPages(question);
@@ -243,13 +246,13 @@ client.on('messageCreate', async (message) => {
         if (err.status === 429 && attempt === 0) {
           console.log('Anthropic 429 — waiting 10s before retry...');
           await new Promise(r => setTimeout(r, 10000));
-          await message.channel.sendTyping();
           continue;
         }
         throw err;
       }
     }
 
+    clearInterval(typingInterval);
     const answer = response.content[0].text.slice(0, 2000);
     addToConversation(message.author.id, question, answer);
 
@@ -259,6 +262,7 @@ client.on('messageCreate', async (message) => {
 
     await message.reply(answer);
   } catch (err) {
+    clearInterval(typingInterval);
     console.log('Anthropic API error:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
     if (err.status === 429) {
       await message.reply('I\'m being rate limited. Please try again in a moment.');
