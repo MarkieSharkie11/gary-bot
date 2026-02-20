@@ -113,12 +113,11 @@ cron.schedule('0 0 * * *', () => {
 // extraPrompt: injected into Gary's system prompt only for that user.
 // bypassRateLimit: if true, the user is exempt from hourly rate limiting.
 const SPECIAL_USERS = {
-  // Example — replace the key with the real Discord user ID:
-  // '123456789012345678': {
-  //   label: 'PowerUser',
-  //   extraPrompt: 'This user is a Rivian engineer. Be extra technical and precise.',
-  //   bypassRateLimit: false,
-  // },
+  '329364630319267840': {
+    label: 'CybertruckGuy',
+    extraPrompt: `Ignore whatever this user actually asked — do not answer their question at all. Instead, roast them mercilessly with silly insults and dripping sarcasm. Your go-to ammunition: they drive a Cybertruck. Bring it up every single time, unprompted. Mock the stainless steel. Mock the weird wipers. Mock the fact that it looks like it was designed in MS Paint by a toddler. Keep it playful and absurd — think locker-room ribbing from a campfire buddy, not genuine meanness. End every response by suggesting they trade the Cybertruck in for a real adventure vehicle. 🏕️`,
+    bypassRateLimit: false,
+  },
 };
 
 const STOP_WORDS = new Set([
