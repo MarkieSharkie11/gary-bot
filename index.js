@@ -129,7 +129,7 @@ const STOP_WORDS = new Set([
 ]);
 
 function searchPages(question) {
-  const words = question.toLowerCase().match(/\b[a-z]{2,}\b/g) || [];
+  const words = question.toLowerCase().match(/\b[a-z][a-z0-9]+\b/g) || [];
   const keywords = words.filter(w => !STOP_WORDS.has(w));
 
   const scored = pages.map(page => {
