@@ -328,15 +328,46 @@ client.on('interactionCreate', async (interaction) => {
 
   if (interaction.commandName === 'admin-stats') {
     resetGlobalIfNewDay();
-    const msUntilReset = 24 * 60 * 60 * 1000 - (Date.now() - globalDayStart);
+    const now = Date.now();
+
+    // Time until daily reset
+    const msUntilReset = 24 * 60 * 60 * 1000 - (now - globalDayStart);
     const hoursLeft = Math.floor(msUntilReset / (60 * 60 * 1000));
     const minutesLeft = Math.floor((msUntilReset % (60 * 60 * 1000)) / 60000);
+
+    // Unique users active in the past hour and how many are rate-limited
+    let activeUsers = 0;
+    let rateLimitedUsers = 0;
+    for (const [, timestamps] of userRequests) {
+      const recent = timestamps.filter(t => now - t < USER_WINDOW_MS);
+      if (recent.length > 0) activeUsers++;
+      if (recent.length >= USER_RATE_LIMIT) rateLimitedUsers++;
+    }
+
+    // Most recent crawl date from data files
+    let lastCrawled = 'Unknown';
+    try {
+      const dataFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
+      let newest = 0;
+      for (const f of dataFiles) {
+        const { crawledAt } = JSON.parse(fs.readFileSync(path.join(dataDir, f), 'utf-8'));
+        if (crawledAt) {
+          const t = new Date(crawledAt).getTime();
+          if (t > newest) newest = t;
+        }
+      }
+      if (newest) lastCrawled = `<t:${Math.floor(newest / 1000)}:R>`;
+    } catch { /* non-fatal */ }
+
     const stats = [
       '**Admin Stats**',
-      `- Requests today: **${globalDailyCount}** / ${GLOBAL_DAILY_LIMIT}`,
+      `- Requests today: **${globalDailyCount}** / ${GLOBAL_DAILY_LIMIT} (${GLOBAL_DAILY_LIMIT - globalDailyCount} remaining)`,
       `- Daily reset in: **${hoursLeft}h ${minutesLeft}m**`,
+      `- Active users (past hour): **${activeUsers}**`,
+      `- Users at rate limit: **${rateLimitedUsers}**`,
       `- Active conversations: **${conversationHistory.size}**`,
       `- Knowledge base pages: **${pages.length}**`,
+      `- Last KB crawl: ${lastCrawled}`,
     ].join('\n');
     await interaction.reply({ content: stats, ephemeral: true });
     return;
