@@ -128,14 +128,32 @@ const STOP_WORDS = new Set([
   'what','which','who','how','when','where','why','i','me','my','you','your','we',
 ]);
 
+function countOccurrences(text, keyword) {
+  let count = 0;
+  let pos = 0;
+  while ((pos = text.indexOf(keyword, pos)) !== -1) {
+    count++;
+    pos += keyword.length;
+  }
+  return count;
+}
+
 function searchPages(question) {
   const words = question.toLowerCase().match(/\b[a-z][a-z0-9]+\b/g) || [];
   const keywords = words.filter(w => !STOP_WORDS.has(w));
+  if (keywords.length === 0) return [];
 
   const scored = pages.map(page => {
-    const lowerText = (page.title + ' ' + page.text).toLowerCase();
-    const hits = keywords.filter(kw => lowerText.includes(kw)).length;
-    return { page, score: hits };
+    const lowerTitle = page.title.toLowerCase();
+    const lowerText = page.text.toLowerCase();
+    let score = 0;
+    for (const kw of keywords) {
+      // Title matches are worth 5x — a keyword in the title is a strong relevance signal
+      if (lowerTitle.includes(kw)) score += 5;
+      // Body matches are worth 1 point per occurrence, capped at 3 to avoid bias toward long pages
+      score += Math.min(countOccurrences(lowerText, kw), 3);
+    }
+    return { page, score };
   });
 
   scored.sort((a, b) => b.score - a.score);
