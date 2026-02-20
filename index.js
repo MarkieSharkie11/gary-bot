@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
 const cron = require('node-cron');
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const Anthropic = require('@anthropic-ai/sdk');
 
 const anthropic = new Anthropic({ maxRetries: 5 });
@@ -182,8 +182,36 @@ const client = new Client({
   ],
 });
 
-client.once('ready', () => {
+const adminCommands = [
+  new SlashCommandBuilder()
+    .setName('admin-crawl')
+    .setDescription('Manually trigger a knowledge base crawl')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder()
+    .setName('admin-stats')
+    .setDescription('View daily usage stats')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+  new SlashCommandBuilder()
+    .setName('admin-clear')
+    .setDescription("Clear a specific user's conversation history")
+    .addUserOption(option =>
+      option.setName('user').setDescription('The user whose history to clear').setRequired(true)
+    )
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+];
+
+client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}`);
+  try {
+    const rest = new REST().setToken(process.env.DISCORD_TOKEN);
+    await rest.put(
+      Routes.applicationCommands(client.user.id),
+      { body: adminCommands.map(c => c.toJSON()) }
+    );
+    console.log('Admin slash commands registered.');
+  } catch (err) {
+    console.error('Failed to register slash commands:', err.message);
+  }
 });
 
 const processedMessages = new Set();
@@ -267,6 +295,58 @@ client.on('messageCreate', async (message) => {
     } else {
       await message.reply('Sorry, something went wrong while generating a response.');
     }
+  }
+});
+
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+    await interaction.reply({ content: 'You need Administrator permission to use this command.', ephemeral: true });
+    return;
+  }
+
+  if (interaction.commandName === 'admin-crawl') {
+    await interaction.deferReply({ ephemeral: true });
+    execFile('node', [path.join(__dirname, 'crawl.js')], (err, stdout, stderr) => {
+      if (err) {
+        console.error('Manual crawl failed:', err.message);
+        interaction.editReply(`Crawl failed: ${err.message}`);
+        return;
+      }
+      if (stderr) console.error(stderr);
+      console.log(stdout);
+      loadPages();
+      interaction.editReply(`Crawl complete! Knowledge base refreshed with **${pages.length}** pages.`);
+    });
+    return;
+  }
+
+  if (interaction.commandName === 'admin-stats') {
+    resetGlobalIfNewDay();
+    const msUntilReset = 24 * 60 * 60 * 1000 - (Date.now() - globalDayStart);
+    const hoursLeft = Math.floor(msUntilReset / (60 * 60 * 1000));
+    const minutesLeft = Math.floor((msUntilReset % (60 * 60 * 1000)) / 60000);
+    const stats = [
+      '**Admin Stats**',
+      `- Requests today: **${globalDailyCount}** / ${GLOBAL_DAILY_LIMIT}`,
+      `- Daily reset in: **${hoursLeft}h ${minutesLeft}m**`,
+      `- Active conversations: **${conversationHistory.size}**`,
+      `- Knowledge base pages: **${pages.length}**`,
+    ].join('\n');
+    await interaction.reply({ content: stats, ephemeral: true });
+    return;
+  }
+
+  if (interaction.commandName === 'admin-clear') {
+    const targetUser = interaction.options.getUser('user');
+    if (conversationHistory.has(targetUser.id)) {
+      conversationHistory.delete(targetUser.id);
+      await interaction.reply({ content: `Cleared conversation history for <@${targetUser.id}>.`, ephemeral: true });
+    } else {
+      await interaction.reply({ content: `No active conversation found for <@${targetUser.id}>.`, ephemeral: true });
+    }
+    return;
   }
 });
 
