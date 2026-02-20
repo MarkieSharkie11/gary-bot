@@ -63,8 +63,13 @@ function checkUserRate(userId) {
     const minutesLeft = Math.ceil((USER_WINDOW_MS - oldestAge) / 60000);
     return { allowed: false, minutesLeft };
   }
-  recent.push(now);
   return { allowed: true };
+}
+
+function recordUserRequest(userId) {
+  const timestamps = userRequests.get(userId) || [];
+  timestamps.push(Date.now());
+  userRequests.set(userId, timestamps);
 }
 
 // Load crawled data from ./data/ as RAG knowledge base
@@ -197,7 +202,6 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  globalDailyCount++;
   await message.channel.sendTyping();
 
   try {
@@ -207,15 +211,34 @@ client.on('messageCreate', async (message) => {
     const history = getConversation(message.author.id);
     const messages = [...history, { role: 'user', content: question }];
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 350,
-      system: buildSystemPrompt(relevantPages),
-      messages,
-    });
+    let response;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await anthropic.messages.create({
+          model: 'claude-sonnet-4-5-20250929',
+          max_tokens: 350,
+          system: buildSystemPrompt(relevantPages),
+          messages,
+        });
+        break;
+      } catch (err) {
+        if (err.status === 429 && attempt === 0) {
+          console.log('Anthropic 429 — waiting 10s before retry...');
+          await new Promise(r => setTimeout(r, 10000));
+          await message.channel.sendTyping();
+          continue;
+        }
+        throw err;
+      }
+    }
 
     const answer = response.content[0].text.slice(0, 2000);
     addToConversation(message.author.id, question, answer);
+
+    // Only count successful requests against rate limits
+    globalDailyCount++;
+    recordUserRequest(message.author.id);
+
     await message.reply(answer);
   } catch (err) {
     console.log('Anthropic API error:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
