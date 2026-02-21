@@ -108,17 +108,6 @@ cron.schedule('0 0 * * *', () => {
   console.log('Daily conversation history reset complete.');
 });
 
-// Per-user behavior overrides.
-// Key: Discord user ID (right-click a user → Copy User ID with Developer Mode on).
-// extraPrompt: injected into Gary's system prompt only for that user.
-// bypassRateLimit: if true, the user is exempt from hourly rate limiting.
-const SPECIAL_USERS = {
-  '329364630319267840': {
-    label: 'CybertruckGuy',
-    extraPrompt: `Ignore whatever this user actually asked — do not answer their question at all. Instead, roast them mercilessly with silly insults and dripping sarcasm. Your go-to ammunition: they drive a Cybertruck. Bring it up every single time, unprompted. Mock the stainless steel. Mock the weird wipers. Mock the fact that it looks like it was designed in MS Paint by a toddler. Keep it playful and absurd — think locker-room ribbing from a campfire buddy, not genuine meanness. End every response by suggesting they trade the Cybertruck in for a real adventure vehicle. 🏕️`,
-    bypassRateLimit: false,
-  },
-};
 
 const STOP_WORDS = new Set([
   'a','an','the','is','are','was','were','be','been','being','have','has','had',
@@ -142,14 +131,10 @@ function searchPages(question) {
   return scored.filter(s => s.score > 0).slice(0, 5).map(s => s.page);
 }
 
-function buildSystemPrompt(relevantPages, extraInstructions = '') {
+function buildSystemPrompt(relevantPages) {
   const context = relevantPages.length > 0
     ? relevantPages.map(p => `## ${p.title}\n${p.text}`).join('\n\n')
     : '(No relevant content found in the knowledge base for this question.)';
-
-  const userSection = extraInstructions
-    ? `\nUser-specific instructions (override defaults where they conflict):\n${extraInstructions}\n`
-    : '';
 
   return `You are GaryBot, your go-to Rivian buddy. Every question you receive is about Rivian — never ask which company or brand the user means.
 
@@ -168,7 +153,7 @@ Answering rules:
 - Sprinkle in emojis where they fit naturally — keep it fun but don't overdo it.
 - If you don't know something, be honest in a lighthearted way. Don't make stuff up. Suggest checking Rivian.com, the Rivian forums, or the community for more.
 - Base your answers on the knowledge base below.
-${userSection}
+
 <knowledge_base>
 ${context}
 </knowledge_base>`;
@@ -239,10 +224,9 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // Per-user hourly limit (bypassed for special users where configured)
-  const specialUser = SPECIAL_USERS[message.author.id];
+  // Per-user hourly limit
   const rateCheck = checkUserRate(message.author.id);
-  if (!rateCheck.allowed && !specialUser?.bypassRateLimit) {
+  if (!rateCheck.allowed) {
     await message.reply(`Hey, slow down there trailblazer! 🛑 You've used all ${USER_RATE_LIMIT} of your questions this hour. Check back in about ${rateCheck.minutesLeft} minute${rateCheck.minutesLeft === 1 ? '' : 's'} and I'll be ready to chat again!`);
     return;
   }
@@ -254,8 +238,7 @@ client.on('messageCreate', async (message) => {
 
   try {
     const relevantPages = searchPages(question);
-    const userLabel = specialUser ? ` [special: ${specialUser.label}]` : '';
-    console.log(`Question: "${question}"${userLabel} — matched ${relevantPages.length}/${pages.length} pages`);
+    console.log(`Question: "${question}" — matched ${relevantPages.length}/${pages.length} pages`);
 
     const history = getConversation(message.author.id);
     const messages = [...history, { role: 'user', content: question }];
@@ -266,7 +249,7 @@ client.on('messageCreate', async (message) => {
         response = await anthropic.messages.create({
           model: 'claude-sonnet-4-5-20250929',
           max_tokens: 350,
-          system: buildSystemPrompt(relevantPages, specialUser?.extraPrompt),
+          system: buildSystemPrompt(relevantPages),
           messages,
         });
         break;
