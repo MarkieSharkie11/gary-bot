@@ -80,7 +80,7 @@ function loadPages() {
   const dataFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
   pages = dataFiles.map(f => {
     const page = JSON.parse(fs.readFileSync(path.join(dataDir, f), 'utf-8'));
-    return { title: page.title, text: page.text };
+    return { title: page.title, text: page.text, url: page.url };
   });
   console.log(`Loaded ${pages.length} pages into knowledge base.`);
 }
@@ -133,7 +133,7 @@ function searchPages(question) {
 
 function buildSystemPrompt(relevantPages) {
   const context = relevantPages.length > 0
-    ? relevantPages.map(p => `## ${p.title}\n${p.text}`).join('\n\n')
+    ? relevantPages.map(p => `## ${p.title}\nSource: ${p.url}\n${p.text}`).join('\n\n')
     : '(No relevant content found in the knowledge base for this question.)';
 
   return `You are GaryBot, your go-to Rivian buddy. Every question you receive is about Rivian — never ask which company or brand the user means.
