@@ -18,7 +18,7 @@ let globalDailyCount = 0;
 let globalDayStart = Date.now();
 
 // Conversation memory — keyed by Discord user ID
-const HISTORY_LIMIT = 4;                    // max stored messages (2 exchanges)
+const HISTORY_LIMIT = 10;                   // max stored messages (5 exchanges)
 const IDLE_TIMEOUT_MS = 60 * 60 * 1000;    // clear after 60 minutes of inactivity
 const conversationHistory = new Map();       // userId -> { messages: [], lastActivity: number }
 
