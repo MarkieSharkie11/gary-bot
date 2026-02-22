@@ -72,6 +72,23 @@ function recordUserRequest(userId) {
   userRequests.set(userId, timestamps);
 }
 
+// Short descriptions for each crawled source domain
+const SOURCE_DESCRIPTIONS = {
+  'rivian.com':        'Official Rivian website — authoritative source for specs, pricing, and announcements.',
+  'riviantrackr.com':  'RivianTrackr — a third-party Rivian news, reviews, and updates blog.',
+  'rivianroamer.com':  'Rivian Roamer — a community-built dashboard for tracking R1T/R1S inventory and owner data.',
+};
+
+function getSourceDescription(url) {
+  if (!url) return null;
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./, '');
+    return SOURCE_DESCRIPTIONS[hostname] || null;
+  } catch {
+    return null;
+  }
+}
+
 // Load crawled data from ./data/ as RAG knowledge base
 const dataDir = path.join(__dirname, 'data');
 let pages = [];
@@ -80,7 +97,7 @@ function loadPages() {
   const dataFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
   pages = dataFiles.map(f => {
     const page = JSON.parse(fs.readFileSync(path.join(dataDir, f), 'utf-8'));
-    return { title: page.title, text: page.text };
+    return { title: page.title, text: page.text, url: page.url };
   });
   console.log(`Loaded ${pages.length} pages into knowledge base.`);
 }
@@ -133,7 +150,11 @@ function searchPages(question) {
 
 function buildSystemPrompt(relevantPages) {
   const context = relevantPages.length > 0
-    ? relevantPages.map(p => `## ${p.title}\n${p.text}`).join('\n\n')
+    ? relevantPages.map(p => {
+        const desc = getSourceDescription(p.url);
+        const sourceLine = desc ? `Source: ${p.url} (${desc})` : `Source: ${p.url}`;
+        return `## ${p.title}\n${sourceLine}\n${p.text}`;
+      }).join('\n\n')
     : '(No relevant content found in the knowledge base for this question.)';
 
   return `You are GaryBot, your go-to Rivian buddy. Every question you receive is about Rivian — never ask which company or brand the user means.
