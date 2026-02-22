@@ -17,7 +17,8 @@ You'll need a `.env` file with `DISCORD_TOKEN` and `ANTHROPIC_API_KEY`. See the 
 1. Create a feature branch from `main`.
 2. Make your changes.
 3. **Update `CHANGELOG.md`** with a summary of your changes (see below).
-4. Open a pull request with a clear description of what changed and why.
+4. **Update `todo.md`** if your PR completes, adds, or modifies any planned tasks (see below).
+5. Open a pull request with a clear description of what changed and why.
 
 ## Changelog
 
@@ -42,6 +43,16 @@ Every pull request **must** include an update to `CHANGELOG.md`. This keeps coll
 ### Fixed
 - Fixed crawler skipping valid rivian.com pages ([#12](https://github.com/MarkieSharkie11/gary-bot/pull/12))
 ```
+
+## Todo List
+
+Every pull request should update `todo.md` when applicable:
+
+- **Completed a task?** Move it to the **Completed** section and check the box (`[x]`)
+- **Adding new planned work?** Add it to the appropriate category with a clear description
+- **Partially finished a task?** Note the remaining work in the description
+
+This keeps the team aligned on what's done, what's in progress, and what's coming next.
 
 ## Project Structure
 

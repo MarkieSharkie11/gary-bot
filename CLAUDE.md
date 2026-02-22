@@ -21,6 +21,14 @@ GaryBot is a Discord bot that answers questions about Rivian vehicles using a RA
 - Link to the PR number when available (e.g., `([#10](https://github.com/MarkieSharkie11/gary-bot/pull/10))`)
 - Keep entries concise — one line per change
 
+### Todo List
+
+**todo.md must be updated in every pull request.** When making changes:
+
+- If your PR completes a task, move it to the **Completed** section and check the box (`[x]`)
+- If your PR adds new planned work or uncovers follow-up tasks, add them to the appropriate category
+- If a task is partially done, note the remaining work in the description
+
 ### Running the Bot
 
 ```bash
