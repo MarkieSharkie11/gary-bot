@@ -7,7 +7,7 @@ All notable changes to GaryBot are documented in this file.
 ## 2026-02-23
 
 ### Changed
-- Moved hardcoded Claude model name into `CLAUDE_MODEL` environment variable with fallback to `claude-sonnet-4-5-20250929`
+- Moved hardcoded Claude model name into `CLAUDE_MODEL` environment variable; default changed to `claude-haiku-4-5-20251001` for faster, cheaper responses
 
 ## 2026-02-22
 

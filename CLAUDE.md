@@ -42,6 +42,6 @@ node index.js   # start the bot
 Required in `.env`:
 - `DISCORD_TOKEN` — Discord bot token
 - `ANTHROPIC_API_KEY` — Anthropic API key
-- `CLAUDE_MODEL` — Claude model to use for responses (default: `claude-sonnet-4-5-20250929`)
+- `CLAUDE_MODEL` — Claude model to use for responses (default: `claude-haiku-4-5-20251001`)
 - `USER_RATE_LIMIT` — Max questions per user per hour (default: 10)
 - `GLOBAL_DAILY_LIMIT` — Max total API calls per day (default: 100)
