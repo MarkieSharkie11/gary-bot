@@ -34,8 +34,6 @@ Tasks planned for GaryBot. If you want to pick something up, let the team know s
 - [ ] **Adaptive Context Window** — Instead of always injecting 5 knowledge base pages into every prompt, set a minimum relevance score so only genuinely matching pages are included. Reduces noise and leads to more accurate answers
 - [ ] **Source Citations** — Append a short list of source URLs to each response showing which knowledge base pages were used. Builds user trust and lets people explore topics further
 - [ ] **Question Routing / Scope Detection** — Before calling the Claude API, check if a question is Rivian-related. For clearly off-topic questions, return a short redirect message without spending an API call
-- [ ] **Configurable Model via .env** — Move the hardcoded Claude model name into an environment variable so upgrading models is a config change rather than a code edit and redeploy
-
 ## Infrastructure & Reliability
 
 - [ ] **Input Length Guard** — Add a maximum character limit on incoming questions before they're sent to the API. Prevents edge cases where very long messages inflate token costs or cause unexpected behavior
@@ -46,3 +44,4 @@ Tasks planned for GaryBot. If you want to pick something up, let the team know s
 ## Completed
 
 - [x] **Admin Commands** — Added Discord slash commands for server admins to manually trigger a knowledge base crawl, view daily usage stats, or clear a user's conversation history without needing direct server access
+- [x] **Configurable Model via .env** — Moved the hardcoded Claude model name into a `CLAUDE_MODEL` environment variable so upgrading models is a config change rather than a code edit and redeploy

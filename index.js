@@ -7,6 +7,7 @@ const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, Permission
 const Anthropic = require('@anthropic-ai/sdk');
 
 const anthropic = new Anthropic({ maxRetries: 5 });
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL || 'claude-haiku-4-5-20251001';
 
 // Rate limiting
 const USER_RATE_LIMIT = parseInt(process.env.USER_RATE_LIMIT, 10) || 10;
@@ -268,7 +269,7 @@ client.on('messageCreate', async (message) => {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         response = await anthropic.messages.create({
-          model: 'claude-sonnet-4-5-20250929',
+          model: CLAUDE_MODEL,
           max_tokens: 350,
           system: buildSystemPrompt(relevantPages),
           messages,
