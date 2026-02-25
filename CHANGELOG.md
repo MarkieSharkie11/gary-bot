@@ -4,6 +4,11 @@ All notable changes to GaryBot are documented in this file.
 
 ## [Unreleased]
 
+## 2026-02-25
+
+### Changed
+- Tightened response length instructions: 3–4 short sentences, bulleted lists when appropriate, hard cap of 1000 characters
+
 ## 2026-02-23
 
 ### Changed
