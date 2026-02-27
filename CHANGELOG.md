@@ -4,6 +4,12 @@ All notable changes to GaryBot are documented in this file.
 
 ## [Unreleased]
 
+## 2026-02-27
+
+### Changed
+- Upgraded knowledge base search from basic keyword matching to TF-IDF scoring, which weights rare/important terms more heavily than common ones
+- Added fuzzy matching via suffix stemming (e.g. "charger" / "charging" / "charged" resolve to the same root) and Levenshtein typo correction (1–2 edits for keywords ≥ 5 chars)
+
 ## 2026-02-25
 
 ### Changed
