@@ -93,6 +93,7 @@ function getSourceDescription(url) {
 // Load crawled data from ./data/ as RAG knowledge base
 const dataDir = path.join(__dirname, 'data');
 let pages = [];
+let tfidfIndex = null;
 
 function loadPages() {
   const dataFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
@@ -100,6 +101,7 @@ function loadPages() {
     const page = JSON.parse(fs.readFileSync(path.join(dataDir, f), 'utf-8'));
     return { title: page.title, text: page.text, url: page.url };
   });
+  buildTfIdfIndex();
   console.log(`Loaded ${pages.length} pages into knowledge base.`);
 }
 
@@ -135,14 +137,136 @@ const STOP_WORDS = new Set([
   'what','which','who','how','when','where','why','i','me','my','you','your','we',
 ]);
 
+// Strip common English suffixes to find a word's root (longest suffixes first).
+// e.g. "charging" -> "charg", "charger" -> "charg", "charged" -> "charg"
+function stem(word) {
+  if (word.length <= 4) return word;
+  if (word.endsWith('ing')  && word.length > 6) return word.slice(0, -3);
+  if (word.endsWith('tion') && word.length > 7) return word.slice(0, -4);
+  if (word.endsWith('ness') && word.length > 7) return word.slice(0, -4);
+  if (word.endsWith('ment') && word.length > 7) return word.slice(0, -4);
+  if (word.endsWith('ers') && word.length > 6) return word.slice(0, -3);
+  if (word.endsWith('er')  && word.length > 5) return word.slice(0, -2);
+  if (word.endsWith('ed')  && word.length > 5) return word.slice(0, -2);
+  if (word.endsWith('ly')  && word.length > 5) return word.slice(0, -2);
+  if (word.endsWith('es')  && word.length > 5) return word.slice(0, -2);
+  if (word.endsWith('s')   && word.length > 4) return word.slice(0, -1);
+  return word;
+}
+
+// Levenshtein edit distance with early-exit once a row minimum exceeds maxDist.
+function levenshtein(a, b, maxDist = Infinity) {
+  if (Math.abs(a.length - b.length) > maxDist) return maxDist + 1;
+  const m = a.length, n = b.length;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  let curr = new Array(n + 1);
+  for (let i = 1; i <= m; i++) {
+    curr[0] = i;
+    let rowMin = curr[0];
+    for (let j = 1; j <= n; j++) {
+      curr[j] = a[i - 1] === b[j - 1]
+        ? prev[j - 1]
+        : 1 + Math.min(prev[j], curr[j - 1], prev[j - 1]);
+      rowMin = Math.min(rowMin, curr[j]);
+    }
+    if (rowMin > maxDist) return maxDist + 1;
+    [prev, curr] = [curr, prev];
+  }
+  return prev[n];
+}
+
+// TF-IDF index built once after pages load; reused on every query.
+function buildTfIdfIndex() {
+  const N = pages.length;
+  if (N === 0) { tfidfIndex = null; return; }
+
+  // Tokenize each page into filtered word list
+  const pageTokens = pages.map(page => {
+    const text = (page.title + ' ' + page.text).toLowerCase();
+    const words = text.match(/\b[a-z]{2,}\b/g) || [];
+    return words.filter(w => !STOP_WORDS.has(w));
+  });
+
+  // Term frequency per page: count / total_tokens
+  const pageTF = pageTokens.map(tokens => {
+    const total = tokens.length || 1;
+    const freq = {};
+    for (const token of tokens) freq[token] = (freq[token] || 0) + 1;
+    const tf = {};
+    for (const [term, count] of Object.entries(freq)) tf[term] = count / total;
+    return tf;
+  });
+
+  // Document frequency: number of pages that contain each term
+  const df = {};
+  for (const tf of pageTF) {
+    for (const term of Object.keys(tf)) df[term] = (df[term] || 0) + 1;
+  }
+
+  // Smoothed IDF: log((N+1)/(df+1))+1 keeps rare terms high, avoids zero
+  const idf = {};
+  for (const [term, docFreq] of Object.entries(df)) {
+    idf[term] = Math.log((N + 1) / (docFreq + 1)) + 1;
+  }
+
+  // TF-IDF vector per page
+  const pageTfIdf = pageTF.map(tf => {
+    const tfidf = {};
+    for (const [term, tfVal] of Object.entries(tf)) tfidf[term] = tfVal * idf[term];
+    return tfidf;
+  });
+
+  // Stemmed vocabulary map for fast word-variation lookup: stem -> [terms]
+  const stemmedVocab = {};
+  for (const term of Object.keys(df)) {
+    const s = stem(term);
+    if (!stemmedVocab[s]) stemmedVocab[s] = [];
+    stemmedVocab[s].push(term);
+  }
+
+  const vocabulary = Object.keys(df);
+  tfidfIndex = { pageTfIdf, idf, stemmedVocab, vocabulary };
+}
+
+// Resolve a single query keyword to matching vocabulary terms + confidence weights.
+// Priority: exact match > stem match > Levenshtein typo match (1-2 edits).
+function expandKeyword(kw, { idf, stemmedVocab, vocabulary }) {
+  if (idf[kw] !== undefined) return [{ term: kw, weight: 1.0 }];
+
+  // Word-variation match via stemming (e.g. "charging" matches "charger")
+  const stemmedKw = stem(kw);
+  if (stemmedVocab[stemmedKw]) {
+    return stemmedVocab[stemmedKw].map(term => ({ term, weight: 0.85 }));
+  }
+
+  // Typo tolerance via Levenshtein (only for keywords long enough to be meaningful)
+  const results = [];
+  if (kw.length >= 5) {
+    const maxDist = kw.length <= 6 ? 1 : 2;
+    for (const vocabTerm of vocabulary) {
+      if (Math.abs(vocabTerm.length - kw.length) > maxDist) continue;
+      const dist = levenshtein(kw, vocabTerm, maxDist);
+      if (dist <= maxDist) results.push({ term: vocabTerm, weight: dist === 1 ? 0.7 : 0.5 });
+    }
+  }
+  return results;
+}
+
 function searchPages(question) {
   const words = question.toLowerCase().match(/\b[a-z]{2,}\b/g) || [];
   const keywords = words.filter(w => !STOP_WORDS.has(w));
 
-  const scored = pages.map(page => {
-    const lowerText = (page.title + ' ' + page.text).toLowerCase();
-    const hits = keywords.filter(kw => lowerText.includes(kw)).length;
-    return { page, score: hits };
+  if (keywords.length === 0 || !tfidfIndex) return [];
+
+  const scored = pages.map((page, i) => {
+    const tfidf = tfidfIndex.pageTfIdf[i];
+    let score = 0;
+    for (const kw of keywords) {
+      for (const { term, weight } of expandKeyword(kw, tfidfIndex)) {
+        if (tfidf[term]) score += tfidf[term] * weight;
+      }
+    }
+    return { page, score };
   });
 
   scored.sort((a, b) => b.score - a.score);
