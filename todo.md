@@ -42,6 +42,7 @@ Tasks planned for GaryBot. If you want to pick something up, let the team know s
 
 ## Completed
 
+- [x] **Fix Railway Startup Crash** — Resolved `ReferenceError: Cannot access 'STOP_WORDS' before initialization` caused by TF-IDF constants being declared after `loadPages()` was called at module load time
 - [x] **Improve RAG Search Quality** — Upgraded knowledge base search from basic keyword matching to TF-IDF scoring, which weights rare/important terms more heavily. Added fuzzy matching via suffix stemming and Levenshtein distance so typos and word variations (e.g. "charger" vs "charging") still return relevant results
 - [x] **Admin Commands** — Added Discord slash commands for server admins to manually trigger a knowledge base crawl, view daily usage stats, or clear a user's conversation history without needing direct server access
 - [x] **Configurable Model via .env** — Moved the hardcoded Claude model name into a `CLAUDE_MODEL` environment variable so upgrading models is a config change rather than a code edit and redeploy

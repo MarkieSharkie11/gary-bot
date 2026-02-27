@@ -90,45 +90,6 @@ function getSourceDescription(url) {
   }
 }
 
-// Load crawled data from ./data/ as RAG knowledge base
-const dataDir = path.join(__dirname, 'data');
-let pages = [];
-let tfidfIndex = null;
-
-function loadPages() {
-  const dataFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
-  pages = dataFiles.map(f => {
-    const page = JSON.parse(fs.readFileSync(path.join(dataDir, f), 'utf-8'));
-    return { title: page.title, text: page.text, url: page.url };
-  });
-  buildTfIdfIndex();
-  console.log(`Loaded ${pages.length} pages into knowledge base.`);
-}
-
-loadPages();
-
-// Re-crawl on the 1st of every month at midnight and reload pages
-cron.schedule('0 0 1 * *', () => {
-  console.log('Scheduled monthly crawl starting...');
-  execFile('node', [path.join(__dirname, 'crawl.js')], (err, stdout, stderr) => {
-    if (err) {
-      console.error('Scheduled crawl failed:', err.message);
-      return;
-    }
-    console.log(stdout);
-    if (stderr) console.error(stderr);
-    loadPages();
-    console.log('Scheduled crawl complete — knowledge base refreshed.');
-  });
-});
-
-// Clear all conversation history at midnight every day
-cron.schedule('0 0 * * *', () => {
-  conversationHistory.clear();
-  console.log('Daily conversation history reset complete.');
-});
-
-
 const STOP_WORDS = new Set([
   'a','an','the','is','are','was','were','be','been','being','have','has','had',
   'do','does','did','will','would','could','should','may','might','shall','can',
@@ -174,6 +135,45 @@ function levenshtein(a, b, maxDist = Infinity) {
   }
   return prev[n];
 }
+
+// Load crawled data from ./data/ as RAG knowledge base
+const dataDir = path.join(__dirname, 'data');
+let pages = [];
+let tfidfIndex = null;
+
+function loadPages() {
+  const dataFiles = fs.readdirSync(dataDir).filter(f => f.endsWith('.json'));
+  pages = dataFiles.map(f => {
+    const page = JSON.parse(fs.readFileSync(path.join(dataDir, f), 'utf-8'));
+    return { title: page.title, text: page.text, url: page.url };
+  });
+  buildTfIdfIndex();
+  console.log(`Loaded ${pages.length} pages into knowledge base.`);
+}
+
+loadPages();
+
+// Re-crawl on the 1st of every month at midnight and reload pages
+cron.schedule('0 0 1 * *', () => {
+  console.log('Scheduled monthly crawl starting...');
+  execFile('node', [path.join(__dirname, 'crawl.js')], (err, stdout, stderr) => {
+    if (err) {
+      console.error('Scheduled crawl failed:', err.message);
+      return;
+    }
+    console.log(stdout);
+    if (stderr) console.error(stderr);
+    loadPages();
+    console.log('Scheduled crawl complete — knowledge base refreshed.');
+  });
+});
+
+// Clear all conversation history at midnight every day
+cron.schedule('0 0 * * *', () => {
+  conversationHistory.clear();
+  console.log('Daily conversation history reset complete.');
+});
+
 
 // TF-IDF index built once after pages load; reused on every query.
 function buildTfIdfIndex() {
