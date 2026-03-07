@@ -31,7 +31,6 @@ Tasks planned for GaryBot. If you want to pick something up, let the team know s
 ## AI & RAG Quality
 
 - [ ] **Adaptive Context Window** — Instead of always injecting 5 knowledge base pages into every prompt, set a minimum relevance score so only genuinely matching pages are included. Reduces noise and leads to more accurate answers
-- [ ] **Source Citations** — Append a short list of source URLs to each response showing which knowledge base pages were used. Builds user trust and lets people explore topics further
 - [ ] **Question Routing / Scope Detection** — Before calling the Claude API, check if a question is Rivian-related. For clearly off-topic questions, return a short redirect message without spending an API call
 ## Infrastructure & Reliability
 
@@ -42,6 +41,7 @@ Tasks planned for GaryBot. If you want to pick something up, let the team know s
 
 ## Completed
 
+- [x] **Source Citations** — Appended a 📚 Sources footer to each response with linked page titles; instructed Gary to inline-link specific referenced text directly to its source URL
 - [x] **Fix Railway Startup Crash** — Resolved `ReferenceError: Cannot access 'STOP_WORDS' before initialization` caused by TF-IDF constants being declared after `loadPages()` was called at module load time
 - [x] **Improve RAG Search Quality** — Upgraded knowledge base search from basic keyword matching to TF-IDF scoring, which weights rare/important terms more heavily. Added fuzzy matching via suffix stemming and Levenshtein distance so typos and word variations (e.g. "charger" vs "charging") still return relevant results
 - [x] **Admin Commands** — Added Discord slash commands for server admins to manually trigger a knowledge base crawl, view daily usage stats, or clear a user's conversation history without needing direct server access

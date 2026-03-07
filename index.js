@@ -273,6 +273,15 @@ function searchPages(question) {
   return scored.filter(s => s.score > 0).slice(0, 5).map(s => s.page);
 }
 
+function buildSourcesFooter(relevantPages) {
+  if (!relevantPages.length) return '';
+  const links = relevantPages.map(p => {
+    const label = p.title ? p.title.slice(0, 50).trim() : new URL(p.url).hostname;
+    return `[${label}](${p.url})`;
+  });
+  return `\n\n📚 **Sources:** ${links.join(' · ')}`;
+}
+
 function buildSystemPrompt(relevantPages) {
   const context = relevantPages.length > 0
     ? relevantPages.map(p => {
@@ -299,6 +308,7 @@ Answering rules:
 - Sprinkle in emojis where they fit naturally — keep it fun but don't overdo it.
 - If you don't know something, be honest in a lighthearted way. Don't make stuff up. Suggest checking Rivian.com, the Rivian forums, or the community for more.
 - Base your answers on the knowledge base below.
+- When you reference specific information from the knowledge base, turn the relevant text into a markdown link pointing to that source URL — e.g. \`[R1T tow ratings](https://rivian.com/...)\`. Only link text that's genuinely tied to a specific source; don't force links where they don't fit.
 
 <knowledge_base>
 ${context}
@@ -410,13 +420,18 @@ client.on('messageCreate', async (message) => {
     }
 
     clearInterval(typingInterval);
-    const answer = response.content[0].text.slice(0, 2000);
-    addToConversation(message.author.id, question, answer);
+    const rawAnswer = response.content[0].text;
+    const footer = buildSourcesFooter(relevantPages);
+    // Store only the raw answer in history so citations don't pollute follow-up context
+    addToConversation(message.author.id, question, rawAnswer);
 
     // Only count successful requests against rate limits
     globalDailyCount++;
     recordUserRequest(message.author.id);
 
+    // Fit within Discord's 2000-char limit while always preserving the footer
+    const maxAnswerLen = 2000 - footer.length;
+    const answer = rawAnswer.slice(0, maxAnswerLen) + footer;
     await message.reply(answer);
   } catch (err) {
     clearInterval(typingInterval);
