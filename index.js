@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
 const cron = require('node-cron');
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const Anthropic = require('@anthropic-ai/sdk');
 
 const anthropic = new Anthropic({ maxRetries: 5 });
@@ -432,7 +432,7 @@ client.on('messageCreate', async (message) => {
     // Fit within Discord's 2000-char limit while always preserving the footer
     const maxAnswerLen = 2000 - footer.length;
     const answer = rawAnswer.slice(0, maxAnswerLen) + footer;
-    await message.reply(answer);
+    await message.reply({ content: answer, flags: MessageFlags.SuppressEmbeds });
   } catch (err) {
     clearInterval(typingInterval);
     console.log('Anthropic API error:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
