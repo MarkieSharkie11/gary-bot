@@ -9,6 +9,7 @@ All notable changes to GaryBot are documented in this file.
 ### Added
 - Source citations appended to every response: a compact 📚 **Sources:** list of linked page titles showing which knowledge base pages Gary used ([#16](https://github.com/MarkieSharkie11/gary-bot/pull/16))
 - Inline citation links: Gary now links specific referenced text directly to its source URL within the response body, so useful info is one click away
+- Suppress Discord link embeds on Gary's responses so source links stay compact and don't generate large preview widgets
 
 ## 2026-02-27
 
