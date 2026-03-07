@@ -6,6 +6,9 @@ All notable changes to GaryBot are documented in this file.
 
 ## 2026-03-07
 
+### Changed
+- Limit source citations footer to top 3 results and use domain hostname (e.g. `rivian.com`) as the link label instead of the full page title, keeping the footer compact
+
 ### Added
 - Source citations appended to every response: a compact 📚 **Sources:** list of linked page titles showing which knowledge base pages Gary used ([#16](https://github.com/MarkieSharkie11/gary-bot/pull/16))
 - Inline citation links: Gary now links specific referenced text directly to its source URL within the response body, so useful info is one click away

@@ -275,8 +275,8 @@ function searchPages(question) {
 
 function buildSourcesFooter(relevantPages) {
   if (!relevantPages.length) return '';
-  const links = relevantPages.map(p => {
-    const label = p.title ? p.title.slice(0, 50).trim() : new URL(p.url).hostname;
+  const links = relevantPages.slice(0, 3).map(p => {
+    const label = new URL(p.url).hostname.replace(/^www\./, '');
     return `[${label}](${p.url})`;
   });
   return `\n\n📚 **Sources:** ${links.join(' · ')}`;
