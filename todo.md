@@ -41,7 +41,7 @@ Tasks planned for GaryBot. If you want to pick something up, let the team know s
 
 ## Completed
 
-- [x] **Auto-Redeploy After Indexing** — After a crawl completes (via `/admin-crawl` or the monthly cron), Gary now POSTs to `RAILWAY_DEPLOY_HOOK_URL` to trigger a Railway redeployment so the new indexed content is live without manual intervention
+- [x] **Auto-Redeploy After Indexing** — After a crawl completes (via `/admin-crawl` or the monthly cron), Gary calls the Railway GraphQL API to trigger a redeployment so the new indexed content is live without manual intervention
 - [x] **Source Citations** — Appended a 📚 Sources footer to each response; capped at 3 citations using hostname labels (e.g. `rivian.com`) for compactness; instructed Gary to inline-link specific referenced text directly to its source URL
 - [x] **Fix Railway Startup Crash** — Resolved `ReferenceError: Cannot access 'STOP_WORDS' before initialization` caused by TF-IDF constants being declared after `loadPages()` was called at module load time
 - [x] **Improve RAG Search Quality** — Upgraded knowledge base search from basic keyword matching to TF-IDF scoring, which weights rare/important terms more heavily. Added fuzzy matching via suffix stemming and Levenshtein distance so typos and word variations (e.g. "charger" vs "charging") still return relevant results

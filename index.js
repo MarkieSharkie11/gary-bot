@@ -92,20 +92,34 @@ function getSourceDescription(url) {
 }
 
 async function triggerRailwayRedeploy() {
-  const hookUrl = process.env.RAILWAY_DEPLOY_HOOK_URL;
-  if (!hookUrl) {
-    console.log('RAILWAY_DEPLOY_HOOK_URL not set — skipping redeploy.');
+  const apiToken = process.env.RAILWAY_API_TOKEN;
+  const serviceId = process.env.RAILWAY_SERVICE_ID;
+  const environmentId = process.env.RAILWAY_ENVIRONMENT_ID;
+
+  if (!apiToken || !serviceId || !environmentId) {
+    console.log('Railway redeploy env vars not set — skipping redeploy.');
     return false;
   }
+
   try {
-    const res = await fetch(hookUrl, { method: 'POST' });
-    if (res.ok) {
-      console.log('Railway redeploy triggered successfully.');
-      return true;
-    } else {
-      console.error(`Railway redeploy failed: HTTP ${res.status}`);
+    const res = await fetch('https://backboard.railway.app/graphql/v2', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `mutation { serviceInstanceRedeploy(environmentId: "${environmentId}", serviceId: "${serviceId}") }`,
+      }),
+    });
+
+    const data = await res.json();
+    if (data.errors) {
+      console.error('Railway redeploy API error:', JSON.stringify(data.errors));
       return false;
     }
+    console.log('Railway redeploy triggered successfully.');
+    return true;
   } catch (err) {
     console.error('Railway redeploy error:', err.message);
     return false;
