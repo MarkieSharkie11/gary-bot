@@ -4,6 +4,11 @@ All notable changes to GaryBot are documented in this file.
 
 ## [Unreleased]
 
+## 2026-03-12
+
+### Changed
+- Refreshed knowledge base with latest crawled data from riviantrackr.com, rivianroamer.com, and rivian.com (includes March 2026 software updates and recent news)
+
 ## 2026-03-07
 
 ### Changed
