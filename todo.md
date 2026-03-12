@@ -22,7 +22,7 @@ Tasks planned for GaryBot. If you want to pick something up, let the team know s
   - [ ] Only crawl specific forum sections
   - [ ] Skip member pages, sponsor pages, and other non-content pages
 - [ ] **Filter Vehicle Inventory Pages** — Add URL filtering to exclude individual vehicle listing pages (e.g. `https://rivianroamer.com/inventory/*`)
-- [ ] **Incremental Crawler Updates** — Instead of re-fetching every page during the monthly crawl, use HTTP conditional requests (`If-Modified-Since` / `ETag`) to skip pages that haven't changed. Speeds up crawls and reduces unnecessary network load
+- [ ] **Incremental Crawler Updates** — Instead of re-fetching every page during the monthly crawl, use HTTP conditional requests (`If-Modified-Since` / `ETag`) to skip pages that haven't changed. Speeds up crawls and reduces unnecessary network load (last full crawl: 2026-03-12)
 - [ ] **Expand the Knowledge Base** — Add new crawl sources beyond the current three sites. Good candidates:
   - [ ] r/Rivian subreddit (has an RSS feed)
   - [ ] Rivian's official newsroom / press releases
