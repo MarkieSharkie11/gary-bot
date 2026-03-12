@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
 const cron = require('node-cron');
+const fetch = require('node-fetch');
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
 const Anthropic = require('@anthropic-ai/sdk');
 
@@ -90,6 +91,27 @@ function getSourceDescription(url) {
   }
 }
 
+async function triggerRailwayRedeploy() {
+  const hookUrl = process.env.RAILWAY_DEPLOY_HOOK_URL;
+  if (!hookUrl) {
+    console.log('RAILWAY_DEPLOY_HOOK_URL not set — skipping redeploy.');
+    return false;
+  }
+  try {
+    const res = await fetch(hookUrl, { method: 'POST' });
+    if (res.ok) {
+      console.log('Railway redeploy triggered successfully.');
+      return true;
+    } else {
+      console.error(`Railway redeploy failed: HTTP ${res.status}`);
+      return false;
+    }
+  } catch (err) {
+    console.error('Railway redeploy error:', err.message);
+    return false;
+  }
+}
+
 const STOP_WORDS = new Set([
   'a','an','the','is','are','was','were','be','been','being','have','has','had',
   'do','does','did','will','would','could','should','may','might','shall','can',
@@ -165,6 +187,7 @@ cron.schedule('0 0 1 * *', () => {
     if (stderr) console.error(stderr);
     loadPages();
     console.log('Scheduled crawl complete — knowledge base refreshed.');
+    triggerRailwayRedeploy();
   });
 });
 
@@ -465,7 +488,11 @@ client.on('interactionCreate', async (interaction) => {
       if (stderr) console.error(stderr);
       console.log(stdout);
       loadPages();
-      interaction.editReply(`Crawl complete! Knowledge base refreshed with **${pages.length}** pages.`);
+      (async () => {
+        const redeployed = await triggerRailwayRedeploy();
+        const redeployNote = redeployed ? ' Redeployment triggered on Railway — new content will be live shortly.' : '';
+        interaction.editReply(`Crawl complete! Knowledge base refreshed with **${pages.length}** pages.${redeployNote}`);
+      })();
     });
     return;
   }

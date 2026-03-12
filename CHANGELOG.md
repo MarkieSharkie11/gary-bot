@@ -4,6 +4,11 @@ All notable changes to GaryBot are documented in this file.
 
 ## [Unreleased]
 
+## 2026-03-12
+
+### Added
+- Auto-redeploy on Railway after a crawl completes: both `/admin-crawl` and the monthly scheduled crawl now POST to `RAILWAY_DEPLOY_HOOK_URL` (if set) so newly indexed content is live without a manual redeploy
+
 ## 2026-03-07
 
 ### Changed
